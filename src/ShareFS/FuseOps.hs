@@ -14,8 +14,8 @@ import           System.Posix.Files         (groupExecuteMode, groupReadMode,
                                              ownerExecuteMode, ownerReadMode,
                                              ownerWriteMode)
 
-import           System.Posix.Types         (ByteCount, DeviceID, FileMode,
-                                             FileOffset)
+import           System.Posix.Types         (ByteCount, DeviceID, EpochTime,
+                                             FileMode, FileOffset)
 
 import           Control.Monad              (void)
 import           Data.Int                   (Int64)
@@ -48,6 +48,7 @@ fuseOps fs = defaultFuseOps
   , fuseRename             = simpleRename fs
   , fuseCreateSymbolicLink = simpleCreateSymbolicLink fs
   , fuseReadSymbolicLink   = simpleReadSymbolicLink fs
+  , fuseSetFileTimes       = simpleSetFileTimes fs
   }
 
 defStat = FileStat
@@ -117,10 +118,15 @@ chown st ctx = st { statFileOwner = fuseCtxUserID ctx
 simpleStatToFileStat :: SimpleStat -> Maybe FileStat
 simpleStatToFileStat SimpleStat {..} =
   case simpleType of
-    'D' -> Just $ changeMode simpleMode $ dirStat
-    'F' -> Just $ changeMode simpleMode $ fileStat simpleSize
-    'L' -> Just $ changeMode simpleMode $ linkStat
+    'D' -> Just $ go $ dirStat
+    'F' -> Just $ go $ fileStat simpleSize
+    'L' -> Just $ go $ linkStat
     _   -> Nothing
+
+  where go st = (changeMode simpleMode st)
+          { statModificationTime = fromIntegral simpleMTime
+          , statStatusChangeTime = fromIntegral simpleCTime
+          }
 
 simpleGetFileStat :: FS -> FilePath -> IO (Either Errno FileStat)
 simpleGetFileStat _ "/" = Right . chown dirStat <$> getFuseContext
@@ -201,6 +207,9 @@ fileModePath path = "/.fs" ++ path <.> "mode"
 fileTypePath :: FilePath -> FilePath
 fileTypePath path = "/.fs" ++ path <.> "type"
 
+fileTimePath :: FilePath -> FilePath
+fileTimePath path = "/.fs" ++ path <.> "time"
+
 putMode :: FS -> FilePath -> Int -> IO Errno
 putMode fs path m = putFile fs (fileModePath path) (LB.fromStrict . B.pack $ show m)
 
@@ -216,6 +225,7 @@ simpleRemove fs path = do
   ret <- deleteFile fs path
   void $ deleteFile fs (fileModePath path)
   void $ deleteFile fs (fileTypePath path)
+  void $ deleteFile fs (fileTimePath path)
   return eOK
 
 simpleRename :: FS -> FilePath -> FilePath -> IO Errno
@@ -234,6 +244,10 @@ simpleReadSymbolicLink fs dst = do
   case ret of
     Left _    -> return $ Left eNOENT
     Right src -> return . Right $ LB.unpack src
+
+simpleSetFileTimes :: FS -> FilePath -> EpochTime -> EpochTime -> IO Errno
+simpleSetFileTimes fs path t1 t2 =
+  putFile fs (fileTimePath path) (LB.pack $ show (t1, t2))
 
 simpleGetFileSystemStats :: String -> IO (Either Errno FileSystemStats)
 simpleGetFileSystemStats _ =

@@ -36,7 +36,7 @@ import           Web.Scotty                           (ActionM, RoutePattern,
                                                        middleware, param, post,
                                                        put, raw, scottyOpts,
                                                        setHeader, settings,
-                                                       status, text)
+                                                       status)
 
 import           ShareFS.SimpleStat
 
@@ -132,11 +132,13 @@ fileStatHandler :: FilePath -> ActionM ()
 fileStatHandler root = do
   modePath <- fileModePath root
   typePath <- fileTypePath root
+  timePath <- fileTimePath root
   path <- filePath root
 
   ret <- liftIO $ do
     hasMode <- doesFileExist modePath
     hasType <- doesFileExist typePath
+    hasTime <- doesFileExist timePath
     isFile <- doesFileExist path
     isDir <- doesDirectoryExist path
     size <- if isFile then getFileSize path
@@ -148,20 +150,31 @@ fileStatHandler root = do
     tp <- if hasType then readFile typePath
                      else return "F"
 
-    case (isFile, isDir, mode) of
-      (False, True, Nothing) -> return ("D", 0, 0)
-      (False, True, Just m)  -> return ("D", m, 0)
-      (True, False, Nothing) -> return (tp, 0, size)
-      (True, False, Just m)  -> return (tp, m, size)
-      _                      -> return ("E", 0, 0)
+    time <- if hasTime then (readMaybe <$> (readFile timePath) :: IO (Maybe (Int64, Int64)))
+                       else return Nothing
+
+    let m = case mode of
+              Nothing -> 0
+              Just v  -> v
+
+        t = case time of
+              Nothing -> (0, 0)
+              Just v  -> v
+
+    case (isFile, isDir) of
+      (False, True) -> return ("D", m, 0, fst t, snd t)
+      (True, False) -> return (tp, m, size, fst t, snd t)
+      _             -> return ("E", 0, 0, 0, 0)
 
   case ret of
-    ('E':_, _, _) -> status status404 >> raw LB.empty
-    (xs,    m, s) -> json SimpleStat { simpleType = head $ xs ++ "E"
-                                     , simpleName = takeFileName path
-                                     , simpleMode = m
-                                     , simpleSize = fromIntegral s
-                                     }
+    ('E':_, _, _, _, _) -> status status404 >> raw LB.empty
+    (xs, m, s, mt, ct) -> json SimpleStat { simpleType = head $ xs ++ "E"
+                                          , simpleName = takeFileName path
+                                          , simpleMode = m
+                                          , simpleSize = fromIntegral s
+                                          , simpleMTime = mt
+                                          , simpleCTime = ct
+                                          }
 
 listDirHandler :: FilePath -> ActionM ()
 listDirHandler root = do
@@ -184,10 +197,12 @@ renameHandler root = do
   srcPath <- filePath root
   srcMode <- fileModePath root
   srcType <- fileTypePath root
+  srcTime <- fileTimePath root
   dst <- dropDrive <$> param "dst"
   let dstPath = root </> dst
       dstMode = root </> ".fs" </> dst <.> "mode"
       dstType = root </> ".fs" </> dst <.> "type"
+      dstTime = root </> ".fs" </> dst <.> "time"
 
   liftIO $ do
     renamePath srcPath dstPath
@@ -195,6 +210,8 @@ renameHandler root = do
     when hasMode $ renamePath srcMode dstMode
     hasType <- doesFileExist srcType
     when hasType $ renamePath srcType dstType
+    hasTime <- doesFileExist srcTime
+    when hasTime $ renamePath srcTime dstTime
     hasStatDir <- doesDirectoryExist (dropExtension srcMode)
     when hasStatDir $ renamePath (dropExtension srcMode) (dropExtension dstMode)
 
@@ -236,6 +253,11 @@ fileTypePath :: FilePath -> ActionM FilePath
 fileTypePath root = do
   path <- dropDrive <$> param "path"
   return $ root </> ".fs" </> path <.> "type"
+
+fileTimePath :: FilePath -> ActionM FilePath
+fileTimePath root = do
+  path <- dropDrive <$> param "path"
+  return $ root </> ".fs" </> path <.> "time"
 
 saveFile :: FilePath -> LB.ByteString -> IO ()
 saveFile fn fc = do
