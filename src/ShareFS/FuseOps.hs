@@ -51,6 +51,7 @@ fuseOps fs = defaultFuseOps
   , fuseReadSymbolicLink   = simpleReadSymbolicLink fs
   , fuseSetFileTimes       = simpleSetFileTimes fs
   , fuseCreateLink         = simpleCreateLink fs
+  , fuseAccess             = \ _ _ -> pure eOK
   }
 
 defStat = FileStat
