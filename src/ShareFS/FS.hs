@@ -20,6 +20,7 @@ import           Data.Int                   (Int64)
 import           Foreign.C.Error
 import           ShareFS.SimpleStat         (SimpleStat)
 
+import qualified Control.Concurrent.Lock    as L (Lock, new, with)
 import           Data.IORef                 (IORef, atomicModifyIORef',
                                              newIORef)
 
@@ -33,24 +34,30 @@ data FS = FS { putFile    :: FilePath -> LB.ByteString -> IO Errno
              }
 
 data SimpleHandle = ReadHandle (IORef LB.ByteString)
-                  | WriteHandle (IORef LB.ByteString)
-                  | ReadWriteHandle (IORef LB.ByteString)
+                  | WriteHandle (IORef LB.ByteString) L.Lock
+                  | ReadWriteHandle (IORef LB.ByteString) L.Lock
 
 newWriteHandle :: IO SimpleHandle
-newWriteHandle = WriteHandle <$> newIORef LB.empty
+newWriteHandle = do
+  l <- L.new
+  h <- newIORef LB.empty
+  return $ WriteHandle h l
 
 newReadHandle :: LB.ByteString -> IO SimpleHandle
 newReadHandle bs = ReadHandle <$> newIORef bs
 
 newReadWriteHandle :: LB.ByteString -> IO SimpleHandle
-newReadWriteHandle bs = ReadWriteHandle <$> newIORef bs
+newReadWriteHandle bs = do
+  l <- L.new
+  h <- newIORef bs
+  return $ ReadWriteHandle h l
 
 simpleRead :: SimpleHandle -> Int64 -> Int64 -> IO (Either Errno LB.ByteString)
 simpleRead handle byteCount offset = do
   case handle of
-    (WriteHandle _)     -> return $ Left eNOSYS
-    (ReadWriteHandle h) -> Right <$> seek h
-    (ReadHandle h)      -> Right <$> seek h
+    (WriteHandle _ _)     -> return $ Left eNOSYS
+    (ReadWriteHandle h l) -> Right <$> L.with l (seek h)
+    (ReadHandle h)        -> Right <$> seek h
 
   where seekContents = LB.take byteCount . LB.drop offset
         seek h = (atomicModifyIORef' h $ \v -> (v, seekContents v))
@@ -66,9 +73,9 @@ writeData bs dat offset | olen < offset = LB.concat $ [bs, patch, dat]
 simpleWrite :: SimpleHandle -> LB.ByteString -> Int64 -> IO (Either Errno Int64)
 simpleWrite handle dat offset = do
   case handle of
-    (ReadHandle _)      -> return $ Left eNOSYS
-    (ReadWriteHandle h) -> Right <$> write h
-    (WriteHandle h)     -> Right <$> write h
+    (ReadHandle _)        -> return $ Left eNOSYS
+    (ReadWriteHandle h l) -> Right <$> L.with l (write h)
+    (WriteHandle h l)     -> Right <$> L.with l (write h)
 
   where writeData bs | olen < offset = LB.concat $ [bs, patch, dat]
                      | otherwise     = LB.concat $ [ LB.take offset bs
@@ -85,8 +92,8 @@ simpleWrite handle dat offset = do
 simpleRelease :: FS -> FilePath -> SimpleHandle -> IO ()
 simpleRelease fs path handle = do
   case handle of
-    (ReadHandle _)      -> return ()
-    (ReadWriteHandle h) -> save h
-    (WriteHandle h)     -> save h
+    (ReadHandle _)        -> return ()
+    (ReadWriteHandle h l) -> L.with l $ save h
+    (WriteHandle h l)     -> L.with l $ save h
 
   where save h = void $ putFile fs path =<< atomicModifyIORef' h (\v -> (LB.empty, v))
