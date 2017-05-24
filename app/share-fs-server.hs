@@ -123,7 +123,16 @@ putFileHandler root = do
 deleteFileHandler :: FilePath -> ActionM ()
 deleteFileHandler root = do
   path <- filePath root
-  liftIO $ deleteFile path
+  modePath <- fileModePath root
+  typePath <- fileTypePath root
+  timePath <- fileTimePath root
+  liftIO $ do
+    deleteFile path
+    deleteFile modePath
+    deleteFile typePath
+    deleteFile timePath
+    hasStatDir <- doesDirectoryExist (dropExtension modePath)
+    when hasStatDir $ deleteFile (dropExtension modePath)
 
   status status204
   raw LB.empty
