@@ -50,6 +50,7 @@ fuseOps fs = defaultFuseOps
   , fuseCreateSymbolicLink = simpleCreateSymbolicLink fs
   , fuseReadSymbolicLink   = simpleReadSymbolicLink fs
   , fuseSetFileTimes       = simpleSetFileTimes fs
+  , fuseCreateLink         = simpleCreateLink fs
   }
 
 defStat = FileStat
@@ -244,6 +245,13 @@ simpleReadSymbolicLink fs dst = do
 simpleSetFileTimes :: FS -> FilePath -> EpochTime -> EpochTime -> IO Errno
 simpleSetFileTimes fs path t1 t2 =
   putFile fs (fileTimePath path) (LB.pack $ show (t1, t2))
+
+simpleCreateLink :: FS -> FilePath -> FilePath -> IO Errno
+simpleCreateLink fs src dst = do
+  ret <- getFile fs src
+  case ret of
+    Left _    -> return eNOENT
+    Right dat -> putFile fs dst dat
 
 simpleGetFileSystemStats :: String -> IO (Either Errno FileSystemStats)
 simpleGetFileSystemStats _ =
