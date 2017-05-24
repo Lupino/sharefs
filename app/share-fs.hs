@@ -10,8 +10,8 @@ import qualified ShareFS              as FS
 import           System.Fuse          (Errno, defaultExceptionHandler, eACCES,
                                        eNOENT, eOK, fuseRun)
 
-import           Data.Aeson           (FromJSON, decode, parseJSON, withObject,
-                                       (.!=), (.:), (.:?))
+import           Data.Aeson           (FromJSON, parseJSON, withObject, (.!=),
+                                       (.:), (.:?))
 
 import           ShareFS.Client
 
