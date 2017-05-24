@@ -1,0 +1,87 @@
+name:                sharefs
+version:             0.1.0.0
+-- synopsis:
+-- description:
+homepage:            https://github.com/Lupino/sharefs#readme
+license:             BSD3
+license-file:        LICENSE
+author:              Li Meng Jun
+maintainer:          lmjubuntu@gmail.com
+copyright:           MIT
+category:            value
+build-type:          Simple
+extra-source-files:  README.md
+cabal-version:       >=1.10
+
+library
+  hs-source-dirs:      src
+  exposed-modules:     ShareFS
+                     , ShareFS.FS
+                     , ShareFS.SimpleStat
+                     , ShareFS.FuseOps
+                     , ShareFS.Client
+                     , ShareFS.Internal
+                     , ShareFS.Wreq
+  build-depends:       base >= 4.7 && < 5
+                     , bytestring
+                     , aeson
+                     , HFuse
+                     , unix
+                     , filepath
+
+                     , text
+                     , wreq
+                     , dispatch-common
+                     , http-client
+                     , lens
+                     , unix-time
+  default-language:    Haskell2010
+
+executable share-fs-server
+  hs-source-dirs:      app
+  main-is:             share-fs-server.hs
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  build-depends:       base
+                     , sharefs
+                     , scotty
+                     , text
+                     , warp
+                     , data-default-class
+                     , streaming-commons
+                     , wai-extra
+                     , optparse-applicative
+                     , bytestring
+                     , http-types
+                     , wai
+                     , wai-cors
+
+                     , filepath
+                     , directory
+                     , mime-types
+  default-language:    Haskell2010
+
+executable share-fs
+  hs-source-dirs:      app
+  main-is:             share-fs.hs
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  build-depends:       base
+                     , sharefs
+                     , bytestring
+                     , HFuse
+                     , aeson
+                     , yaml
+                     , optparse-applicative
+  default-language:    Haskell2010
+
+test-suite sharefs-test
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      test
+  main-is:             Spec.hs
+  build-depends:       base
+                     , sharefs
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  default-language:    Haskell2010
+
+source-repository head
+  type:     git
+  location: https://github.com/Lupino/sharefs
