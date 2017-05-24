@@ -46,7 +46,7 @@ fuseOps fs = defaultFuseOps
   , fuseRelease            = FS.simpleRelease fs
   , fuseRemoveLink         = deleteFile fs
   , fuseRemoveDirectory    = deleteFile fs
-  , fuseRename             = simpleRename fs
+  , fuseRename             = renameFile fs
   , fuseCreateSymbolicLink = simpleCreateSymbolicLink fs
   , fuseReadSymbolicLink   = simpleReadSymbolicLink fs
   , fuseSetFileTimes       = simpleSetFileTimes fs
@@ -226,9 +226,6 @@ simpleCreateDirectory fs path m = do
   case ret of
     eOK -> putMode fs path $ fromIntegral m
     _   -> return ret
-
-simpleRename :: FS -> FilePath -> FilePath -> IO Errno
-simpleRename fs src dst = renameFile fs src dst
 
 simpleCreateSymbolicLink :: FS -> FilePath -> FilePath -> IO Errno
 simpleCreateSymbolicLink fs src dst = do
