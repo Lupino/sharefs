@@ -25,7 +25,8 @@ import           System.Fuse
 import           Text.Read                  (readMaybe)
 
 import           ShareFS.FS                 (FS (..), SimpleHandle (..),
-                                             newReadHandle, newWriteHandle)
+                                             newReadHandle, newReadWriteHandle,
+                                             newWriteHandle)
 import qualified ShareFS.FS                 as FS
 import           ShareFS.SimpleStat         (SimpleStat (..))
 
@@ -161,11 +162,17 @@ simpleReadDirectory fs path = do
 
 simpleOpen :: FS -> FilePath -> OpenMode -> OpenFileFlags -> IO (Either Errno SimpleHandle)
 simpleOpen _ _ WriteOnly _ = Right <$> newWriteHandle
-simpleOpen fs path _ _ = do
+simpleOpen fs path ReadOnly _ = do
   ret <- getFile fs path
   case ret of
     Left e    -> return $ Left e
     Right dat -> Right <$> newReadHandle dat
+
+simpleOpen fs path ReadWrite _ = do
+  ret <- getFile fs path
+  case ret of
+    Left e    -> return $ Left e
+    Right dat -> Right <$> newReadWriteHandle dat
 
 simpleRead :: FS -> FilePath -> SimpleHandle -> ByteCount -> FileOffset -> IO (Either Errno B.ByteString)
 simpleRead _ _ h byteCount offset = go <$> FS.simpleRead h (fromIntegral byteCount) (fromIntegral offset)
