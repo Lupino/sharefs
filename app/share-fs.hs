@@ -67,7 +67,7 @@ fs gw = FS { FS.putFile    = fsPutFile gw
            , FS.putDir     = fsPutDir gw
            , FS.renameFile = fsRenameFile gw
            , FS.statFile   = fsStatFile gw
-        }
+           }
 
 fsPutFile :: Gateway -> FilePath -> LB.ByteString -> IO Errno
 fsPutFile gw path bs = do

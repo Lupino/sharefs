@@ -90,7 +90,7 @@ simpleWrite handle dat offset = do
         write h = atomicModifyIORef' h $ \v -> (writeData v, LB.length dat)
 
 simpleRelease :: FS -> FilePath -> SimpleHandle -> IO ()
-simpleRelease fs path handle = do
+simpleRelease fs path handle =
   case handle of
     (ReadHandle _)        -> return ()
     (ReadWriteHandle h l) -> L.with l $ save h
