@@ -37,6 +37,8 @@ library
                      , unix-time
 
                      , concurrent-extra
+
+                     , unordered-containers
   default-language:    Haskell2010
 
 executable share-fs-server

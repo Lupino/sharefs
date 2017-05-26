@@ -158,16 +158,19 @@ simpleReadDirectory fs path = do
 
         go ctx stat@(SimpleStat { simpleName = n }) =
           case simpleStatToFileStat stat of
-            Nothing   -> Nothing
-            Just stat -> Just (n, chown stat ctx)
+            Nothing -> Nothing
+            Just st -> Just (n, chown st ctx)
 
 
 simpleOpen :: FS -> FilePath -> OpenMode -> OpenFileFlags -> IO (Either Errno SimpleHandle)
-simpleOpen fs path m _ =
-  case m of
-    WriteOnly -> Right <$> newWriteHandle
-    ReadOnly  -> loadData newReadHandle
-    ReadWrite -> loadData newReadWriteHandle
+simpleOpen fs path m _ = withOpenStore $ do
+  opened <- FS.getOpenedHandle fs path
+  case opened of
+    Just h -> return $ Right h
+    Nothing -> case m of
+                 WriteOnly -> Right <$> newWriteHandle
+                 ReadOnly  -> loadData newReadHandle
+                 ReadWrite -> loadData newReadWriteHandle
 
   where loadData h = do
           ret <- getFile fs path
@@ -175,6 +178,11 @@ simpleOpen fs path m _ =
             Left e    -> return $ Left e
             Right dat -> Right <$> h dat
 
+        withOpenStore io = do
+          v <- io
+          case v of
+            Left _  -> return v
+            Right h -> FS.addOpenedStore fs path h >> return v
 
 simpleRead :: FS -> FilePath -> SimpleHandle -> ByteCount -> FileOffset -> IO (Either Errno B.ByteString)
 simpleRead _ _ h byteCount offset = go <$> FS.simpleRead h (fromIntegral byteCount) (fromIntegral offset)

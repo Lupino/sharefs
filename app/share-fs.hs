@@ -57,17 +57,19 @@ program Options { getConfigFile = configFile } = do
 startFS :: Config -> IO ()
 startFS Config { fileCache = fc, fuseOpt = opt } = do
   gw <- initMgr fc
-  fuseRun "share-fs" opt (fuseOps (fs gw)) defaultExceptionHandler
+  st <- FS.newOpenedStore
+  fuseRun "share-fs" opt (fuseOps (fs gw st)) defaultExceptionHandler
 
-fs :: Gateway -> FS
-fs gw = FS { FS.putFile    = fsPutFile gw
-           , FS.getFile    = fsGetFile gw
-           , FS.deleteFile = fsDeleteFile gw
-           , FS.getDir     = fsGetDir gw
-           , FS.putDir     = fsPutDir gw
-           , FS.renameFile = fsRenameFile gw
-           , FS.statFile   = fsStatFile gw
-           }
+fs :: Gateway -> FS.OpenedStore -> FS
+fs gw st = FS { FS.putFile     = fsPutFile gw
+              , FS.getFile     = fsGetFile gw
+              , FS.deleteFile  = fsDeleteFile gw
+              , FS.getDir      = fsGetDir gw
+              , FS.putDir      = fsPutDir gw
+              , FS.renameFile  = fsRenameFile gw
+              , FS.statFile    = fsStatFile gw
+              , FS.openedStore = st
+              }
 
 fsPutFile :: Gateway -> FilePath -> LB.ByteString -> IO Errno
 fsPutFile gw path bs = do

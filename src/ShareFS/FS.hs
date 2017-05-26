@@ -9,11 +9,15 @@ module ShareFS.FS
   , simpleRead
   , simpleWrite
   , simpleRelease
+  , newOpenedStore
+  , addOpenedStore
+  , removeOpenedStore
+  , getOpenedHandle
+  , OpenedStore
   ) where
 
-import qualified Data.ByteString.Lazy.Char8 as LB (ByteString, append, concat,
-                                                   drop, empty, length, pack,
-                                                   take)
+import qualified Data.ByteString.Lazy.Char8 as LB (ByteString, concat, drop,
+                                                   empty, length, pack, take)
 
 import           Control.Monad              (void)
 import           Data.Int                   (Int64)
@@ -21,17 +25,38 @@ import           Foreign.C.Error
 import           ShareFS.SimpleStat         (SimpleStat)
 
 import qualified Control.Concurrent.Lock    as L (Lock, new, with)
+import           Data.HashMap.Strict        (HashMap)
+import qualified Data.HashMap.Strict        as HM (delete, empty, insert,
+                                                   lookup)
 import           Data.IORef                 (IORef, atomicModifyIORef',
                                              newIORef)
 
-data FS = FS { putFile    :: FilePath -> LB.ByteString -> IO Errno
-             , getFile    :: FilePath -> IO (Either Errno LB.ByteString)
-             , deleteFile :: FilePath -> IO Errno
-             , getDir     :: FilePath -> IO (Either Errno [SimpleStat])
-             , putDir     :: FilePath -> IO Errno
-             , renameFile :: FilePath -> FilePath -> IO Errno
-             , statFile   :: FilePath -> IO (Either Errno SimpleStat)
+type OpenedStore = IORef (HashMap FilePath SimpleHandle)
+
+data FS = FS { putFile     :: FilePath -> LB.ByteString -> IO Errno
+             , getFile     :: FilePath -> IO (Either Errno LB.ByteString)
+             , deleteFile  :: FilePath -> IO Errno
+             , getDir      :: FilePath -> IO (Either Errno [SimpleStat])
+             , putDir      :: FilePath -> IO Errno
+             , renameFile  :: FilePath -> FilePath -> IO Errno
+             , statFile    :: FilePath -> IO (Either Errno SimpleStat)
+             , openedStore :: OpenedStore
              }
+
+newOpenedStore :: IO OpenedStore
+newOpenedStore = newIORef HM.empty
+
+addOpenedStore :: FS -> FilePath -> SimpleHandle -> IO ()
+addOpenedStore fs path sh = atomicModifyIORef' h $ \v -> (HM.insert path sh v, ())
+  where h = openedStore fs
+
+removeOpenedStore :: FS -> FilePath -> IO ()
+removeOpenedStore fs path = atomicModifyIORef' h $ \v -> (HM.delete path v, ())
+  where h = openedStore fs
+
+getOpenedHandle :: FS -> FilePath -> IO (Maybe SimpleHandle)
+getOpenedHandle fs path = atomicModifyIORef' h $ \v -> (v, HM.lookup path v)
+  where h = openedStore fs
 
 data SimpleHandle = ReadHandle (IORef LB.ByteString)
                   | WriteHandle (IORef LB.ByteString) L.Lock
@@ -90,7 +115,8 @@ simpleWrite handle dat offset = do
         write h = atomicModifyIORef' h $ \v -> (writeData v, LB.length dat)
 
 simpleRelease :: FS -> FilePath -> SimpleHandle -> IO ()
-simpleRelease fs path handle =
+simpleRelease fs path handle = do
+  removeOpenedStore fs path
   case handle of
     (ReadHandle _)        -> return ()
     (ReadWriteHandle h l) -> L.with l $ save h
