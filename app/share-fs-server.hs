@@ -40,6 +40,8 @@ import           Web.Scotty                           (ActionM, RoutePattern,
 
 import           ShareFS.SimpleStat
 
+import           Data.UnixTime
+
 import           Data.Default.Class                   (def)
 
 import           Control.Monad.IO.Class               (liftIO)
@@ -162,12 +164,14 @@ fileStatHandler root = do
     time <- if hasTime then (readMaybe <$> (readFile timePath) :: IO (Maybe (Int64, Int64)))
                        else return Nothing
 
+    now <- read . show . toEpochTime <$> getUnixTime
+
     let m = case mode of
               Nothing -> 0
               Just v  -> v
 
         t = case time of
-              Nothing -> (0, 0)
+              Nothing -> (now, now)
               Just v  -> v
 
     case (isFile, isDir) of
