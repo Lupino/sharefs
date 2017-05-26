@@ -17,18 +17,17 @@ import           System.Posix.Files         (groupExecuteMode, groupReadMode,
 import           System.Posix.Types         (ByteCount, DeviceID, EpochTime,
                                              FileMode, FileOffset)
 
-import           Control.Monad              (void)
 import           Data.Int                   (Int64)
 import           Data.Maybe                 (catMaybes)
 import           System.FilePath            ((<.>))
 import           System.Fuse
-import           Text.Read                  (readMaybe)
 
 import           ShareFS.FS                 (FS (..), SimpleHandle (..),
                                              newReadHandle, newReadWriteHandle,
                                              newWriteHandle)
 import qualified ShareFS.FS                 as FS
 import           ShareFS.SimpleStat         (SimpleStat (..))
+
 
 fuseOps :: FS -> FuseOperations SimpleHandle
 fuseOps fs = defaultFuseOps

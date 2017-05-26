@@ -87,14 +87,6 @@ simpleRead handle byteCount offset = do
   where seekContents = LB.take byteCount . LB.drop offset
         seek h = (atomicModifyIORef' h $ \v -> (v, seekContents v))
 
-writeData :: LB.ByteString -> LB.ByteString -> Int64 -> LB.ByteString
-writeData bs dat offset | olen < offset = LB.concat $ [bs, patch, dat]
-                        | otherwise = LB.take offset bs `LB.append` dat `LB.append` LB.drop (offset + len) bs
-
-  where olen = LB.length bs
-        len = LB.length dat
-        patch = LB.pack $ take (fromIntegral $ offset - olen) (cycle " ")
-
 simpleWrite :: SimpleHandle -> LB.ByteString -> Int64 -> IO (Either Errno Int64)
 simpleWrite handle dat offset = do
   case handle of
