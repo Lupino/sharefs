@@ -196,15 +196,13 @@ simpleWrite _ _ h dat offset = go <$> FS.simpleWrite h (LB.fromStrict dat) (from
 simpleCreateDevice :: FS -> FilePath -> EntryType -> FileMode -> DeviceID -> IO Errno
 simpleCreateDevice fs path Directory m _   = do
   ret <- putDir fs path
-  case ret of
-    eOK -> putMode fs path $ fromIntegral m
-    _   -> return ret
+  if ret == eOK then putMode fs path $ fromIntegral m
+                else return ret
 
 simpleCreateDevice fs path RegularFile m _ = do
   ret <- putFile fs path LB.empty
-  case ret of
-    eOK -> putMode fs path $ fromIntegral m
-    _   -> return ret
+  if ret == eOK then putMode fs path $ fromIntegral m
+                else return ret
 
 simpleCreateDevice fs path SymbolicLink m _ = do
   ret <- putFile fs path LB.empty
@@ -232,9 +230,8 @@ putMode fs path m = putFile fs (fileModePath path) (LB.fromStrict . B.pack $ sho
 simpleCreateDirectory :: FS -> FilePath -> FileMode -> IO Errno
 simpleCreateDirectory fs path m = do
   ret <- putDir fs path
-  case ret of
-    eOK -> putMode fs path $ fromIntegral m
-    _   -> return ret
+  if ret == eOK then putMode fs path $ fromIntegral m
+                else return ret
 
 simpleCreateSymbolicLink :: FS -> FilePath -> FilePath -> IO Errno
 simpleCreateSymbolicLink fs src dst = do
