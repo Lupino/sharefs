@@ -15,15 +15,22 @@ module ShareFS.Client
 
 import qualified Data.ByteString.Lazy as LB (ByteString, empty, toStrict)
 import qualified Data.Text.Lazy       as LT (pack)
+import           Data.UnixTime
 import           Network.Wreq
 import           ShareFS.Internal     (Gateway (..), initMgr)
 import           ShareFS.SimpleStat   (SimpleStat (..))
 import           ShareFS.Wreq
 
+reqTS :: IO String
+reqTS = do
+  ts <- toEpochTime <$> getUnixTime
+  return $ "?t=" ++ show ts
+
 -- get "/file/path/to/filename"
 getFile :: FilePath -> Gateway -> IO (Either String LB.ByteString)
 getFile path gw = do
-  responseEither $ getWith (getOptions gw) uri
+  ts <- reqTS
+  responseEither $ getWith (getOptions gw) (uri ++ ts)
 
   where uri = getGWUri gw ++ "/file" ++ path
 
@@ -46,14 +53,16 @@ deleteFile path gw = do
 -- get "/stat/path/to/filename_or_dir"
 statFile :: FilePath -> Gateway -> IO (Either String SimpleStat)
 statFile path gw = do
-  responseEitherJSON $ getWith (getOptions gw) uri
+  ts <- reqTS
+  responseEitherJSON $ getWith (getOptions gw) (uri ++ ts)
 
   where uri = getGWUri gw ++ "/stat" ++ path
 
 -- get "/dir/path/to/dir"
 getDir :: FilePath -> Gateway -> IO (Either String [SimpleStat])
 getDir path gw = do
-  responseEitherJSON $ getWith (getOptions gw) uri
+  ts <- reqTS
+  responseEitherJSON $ getWith (getOptions gw) (uri ++ ts)
 
   where uri = getGWUri gw ++ "/dir" ++ path
 
