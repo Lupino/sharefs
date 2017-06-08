@@ -7,9 +7,9 @@ module ShareFS.Internal
   , initMgr
   ) where
 
-import           Data.Aeson          (FromJSON (..), Value, withObject, (.!=),
-                                      (.:), (.:?))
-import           Data.Int            (Int64)
+import           Data.Aeson          (FromJSON (..), withObject, (.!=), (.:),
+                                      (.:?))
+
 import           Network.HTTP.Client (Manager, defaultManagerSettings,
                                       managerConnCount, managerResponseTimeout,
                                       newManager, responseTimeoutMicro)

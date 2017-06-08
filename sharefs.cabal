@@ -13,32 +13,40 @@ build-type:          Simple
 extra-source-files:  README.md
 cabal-version:       >=1.10
 
+flag fuse
+    description: Fuse file system
+    default: True
+    manual: False
+
+
 library
   hs-source-dirs:      src
-  exposed-modules:     ShareFS
-                     , ShareFS.FS
-                     , ShareFS.SimpleStat
-                     , ShareFS.FuseOps
-                     , ShareFS.Client
+  exposed-modules:     ShareFS.Client
                      , ShareFS.Internal
                      , ShareFS.Wreq
+                     , ShareFS.SimpleStat
+
   build-depends:       base >= 4.7 && < 5
                      , bytestring
                      , aeson
-                     , HFuse
-                     , unix
-                     , filepath
-
+                     , http-client
                      , text
                      , wreq
                      , dispatch-common
-                     , http-client
                      , lens
                      , unix-time
 
-                     , concurrent-extra
 
-                     , unordered-containers
+  if flag(fuse)
+    exposed-modules:     ShareFS
+                       , ShareFS.FS
+                       , ShareFS.FuseOps
+    build-depends:       HFuse
+                       , unix
+                       , filepath
+                       , concurrent-extra
+                       , unordered-containers
+
   default-language:    Haskell2010
 
 executable share-fs-server
@@ -66,16 +74,19 @@ executable share-fs-server
   default-language:    Haskell2010
 
 executable share-fs
+  if !flag(fuse)
+    buildable: False
   hs-source-dirs:      app
   main-is:             share-fs.hs
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
-  build-depends:       base
-                     , sharefs
-                     , bytestring
-                     , HFuse
-                     , aeson
-                     , yaml
-                     , optparse-applicative
+  if flag(fuse)
+    build-depends:       base
+                       , sharefs
+                       , bytestring
+                       , HFuse
+                       , aeson
+                       , yaml
+                       , optparse-applicative
   default-language:    Haskell2010
 
 test-suite sharefs-test
