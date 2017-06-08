@@ -35,6 +35,7 @@ library
                      , dispatch-common
                      , lens
                      , unix-time
+                     , filepath
 
 
   if flag(fuse)
