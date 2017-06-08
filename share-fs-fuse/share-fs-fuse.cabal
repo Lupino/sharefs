@@ -1,0 +1,51 @@
+name:                share-fs-fuse
+version:             0.1.0.0
+-- synopsis:
+-- description:
+homepage:            https://github.com/Lupino/sharefs#readme
+license:             BSD3
+license-file:        LICENSE
+author:              Li Meng Jun
+maintainer:          lmjubuntu@gmail.com
+copyright:           MIT
+category:            value
+build-type:          Simple
+extra-source-files:  README.md
+cabal-version:       >=1.10
+
+library
+  hs-source-dirs:      src
+  exposed-modules:     ShareFS
+                     , ShareFS.FS
+                     , ShareFS.FuseOps
+  build-depends:       base >= 4.7 && < 5
+                     , bytestring
+                     , share-fs-common
+                     , filepath
+                     , HFuse
+                     , unix
+                     , filepath
+                     , concurrent-extra
+                     , unordered-containers
+
+  default-language:    Haskell2010
+
+executable share-fs-fuse
+  hs-source-dirs:      app
+  main-is:             share-fs-fuse.hs
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  build-depends:       base
+                     , share-fs-fuse
+                     , share-fs-common
+                     , share-fs-client
+                     , bytestring
+                     , HFuse
+                     , aeson
+                     , yaml
+                     , optparse-applicative
+
+  default-language:    Haskell2010
+
+source-repository head
+  type:     git
+  location: https://github.com/Lupino/sharefs
