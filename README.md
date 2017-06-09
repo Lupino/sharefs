@@ -18,3 +18,7 @@ Recommand build `sharefs` with [`stack`](https://docs.haskellstack.org/en/stable
     # start fuse client
     mkdir -p mount
     share-fs-fuse -c config.yml
+
+# API
+
+See [docs](https://lupino.github.io/sharefs/)
