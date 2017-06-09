@@ -1,0 +1,10 @@
+filecache:
+  host: http://127.0.0.1:8080
+  key: ""
+  secret: ""
+  numThreads: 10
+  # numThreads of fetch async for haxl
+  timeout: 300
+  conn-count: 100
+
+fuse: ["mount", "-f"]
