@@ -10,19 +10,19 @@ module ShareFS.Wreq
   , tryResponse
   ) where
 
-import           Control.Exception        (try)
-import           Control.Lens             ((&), (.~), (^.))
-import           Data.Aeson               (FromJSON)
-import qualified Data.ByteString.Char8    as B (ByteString, pack)
-import qualified Data.ByteString.Lazy     as LB (ByteString)
-import qualified Data.Text.Lazy           as LT (Text, pack)
+import           Control.Exception      (try)
+import           Control.Lens           ((&), (.~), (^.))
+import           Data.Aeson             (FromJSON)
+import qualified Data.ByteString.Char8  as B (ByteString, pack)
+import qualified Data.ByteString.Lazy   as LB (ByteString)
+import qualified Data.Text.Lazy         as LT (Text, pack)
 import           Data.UnixTime
-import           Dispatch.Utils.Signature (signParams, signRaw)
-import           Network.HTTP.Client      (HttpException (..),
-                                           HttpExceptionContent (..), Manager)
-import           Network.Wreq             (Options, Response, asJSON, defaults,
-                                           header, manager, responseBody)
-import           ShareFS.Internal         (Gateway (..))
+import           Network.HTTP.Client    (HttpException (..),
+                                         HttpExceptionContent (..), Manager)
+import           Network.Wreq           (Options, Response, asJSON, defaults,
+                                         header, manager, responseBody)
+import           ShareFS.Internal       (Gateway (..))
+import           Yuntan.Utils.Signature (signParams, signRaw)
 
 
 getMgr :: Maybe Manager -> Options

@@ -25,7 +25,7 @@ library
                      , http-client
                      , text
                      , wreq
-                     , dispatch-common
+                     , yuntan-common
                      , lens
                      , unix-time
                      , filepath
