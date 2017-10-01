@@ -50,7 +50,7 @@ getOptionsAndSignRaw path dat (Gateway { getGWAppKey = key, getGWAppSecret = sec
   let sign = signRaw (B.pack sec) [ ("key", B.pack key)
                                   , ("timestamp", B.pack t)
                                   , ("raw", dat)
-                                  , ("sign_path", B.pack path)
+                                  , ("pathname", B.pack path)
                                   ]
       opts = getMgr mgr & header "X-REQUEST-KEY" .~ [B.pack key]
                         & header "X-REQUEST-SIGNATURE" .~ [sign]
