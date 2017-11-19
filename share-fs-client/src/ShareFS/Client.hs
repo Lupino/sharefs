@@ -23,7 +23,7 @@ import           ShareFS.Wreq
 import qualified System.FilePath      as FP (dropDrive, (</>))
 
 (</>) :: FilePath -> FilePath -> FilePath
-root </> path = root FP.</> (FP.dropDrive path)
+root </> path = root FP.</> FP.dropDrive path
 
 reqTS :: IO String
 reqTS = do

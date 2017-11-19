@@ -21,7 +21,7 @@ import qualified Data.Yaml            as Y
 import           Options.Applicative
 
 
-data Options = Options { getConfigFile  :: String }
+newtype Options = Options { getConfigFile  :: String }
 
 parser :: Parser Options
 parser = Options <$> strOption (long "config"

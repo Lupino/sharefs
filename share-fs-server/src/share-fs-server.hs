@@ -8,7 +8,7 @@ import qualified Data.ByteString.Lazy                 as LB (ByteString, empty,
                                                              writeFile)
 import           Data.Int                             (Int64)
 import           Data.List                            (isPrefixOf)
-import           Data.Maybe                           (catMaybes)
+import           Data.Maybe                           (catMaybes, fromMaybe)
 import qualified Data.Text                            as T (Text, pack, unpack)
 import           Network.Mime                         (MimeType,
                                                        defaultMimeLookup)
@@ -83,7 +83,7 @@ main = execParser opts >>= program
      <> header "share-fs-server - ShareFS server" )
 
 program :: Options -> IO ()
-program (Options {getHost = host, getPort = port, getPath = path }) = do
+program Options{getHost = host, getPort = port, getPath = path} =
   scottyOpts opts $ application path
 
   where opts = def { settings = setPort port $ setHost (Host host) (settings def) }
@@ -101,7 +101,7 @@ application root = do
 
 matchPath :: [T.Text] -> RoutePattern
 matchPath strs = function $ \req ->
-  if isPrefixOf strs (pathInfo req) then
+  if strs `isPrefixOf` pathInfo req then
     Just [("path", LT.pack $ foldr ((</>) . T.unpack) "" (drop 1 $ pathInfo req))]
   else Nothing
 
@@ -124,10 +124,7 @@ putFileHandler root = do
 
 deleteFileHandler :: FilePath -> ActionM ()
 deleteFileHandler root = do
-  path <- filePath root
-  modePath <- fileModePath root
-  typePath <- fileTypePath root
-  timePath <- fileTimePath root
+  (path, modePath, typePath, timePath) <- fileMetaPaths root
   liftIO $ do
     deleteFile path
     deleteFile modePath
@@ -141,10 +138,7 @@ deleteFileHandler root = do
 
 fileStatHandler :: FilePath -> ActionM ()
 fileStatHandler root = do
-  modePath <- fileModePath root
-  typePath <- fileTypePath root
-  timePath <- fileTimePath root
-  path <- filePath root
+  (path, modePath, typePath, timePath) <- fileMetaPaths root
 
   ret <- liftIO $ do
     hasMode <- doesFileExist modePath
@@ -155,24 +149,19 @@ fileStatHandler root = do
     size <- if isFile then getFileSize path
                       else return 0
 
-    mode <- if hasMode then (readMaybe <$> (readFile modePath) :: IO (Maybe Int64))
+    mode <- if hasMode then (readMaybe <$> readFile modePath :: IO (Maybe Int64))
                        else return Nothing
 
     tp <- if hasType then readFile typePath
                      else return "F"
 
-    time <- if hasTime then (readMaybe <$> (readFile timePath) :: IO (Maybe (Int64, Int64)))
+    time <- if hasTime then (readMaybe <$> readFile timePath :: IO (Maybe (Int64, Int64)))
                        else return Nothing
 
     now <- read . show . toEpochTime <$> getUnixTime
 
-    let m = case mode of
-              Nothing -> 0
-              Just v  -> v
-
-        t = case time of
-              Nothing -> (now, now)
-              Just v  -> v
+    let m = fromMaybe 0 mode
+        t = fromMaybe (now, now) time
 
     case (isFile, isDir) of
       (False, True) -> return ("D", m, 0, fst t, snd t)
@@ -207,10 +196,7 @@ putDirHandler root = do
 
 renameHandler :: FilePath -> ActionM ()
 renameHandler root = do
-  srcPath <- filePath root
-  srcMode <- fileModePath root
-  srcType <- fileTypePath root
-  srcTime <- fileTimePath root
+  (srcPath, srcMode, srcType, srcTime) <- fileMetaPaths root
   dst <- dropDrive <$> param "dst"
   let dstPath = root </> dst
       dstMode = root </> ".fs" </> dst <.> "mode"
@@ -271,6 +257,14 @@ fileTimePath :: FilePath -> ActionM FilePath
 fileTimePath root = do
   path <- dropDrive <$> param "path"
   return $ root </> ".fs" </> path <.> "time"
+
+fileMetaPaths :: FilePath -> ActionM (FilePath, FilePath, FilePath, FilePath)
+fileMetaPaths root = do
+  path <- filePath root
+  modePath <- fileModePath root
+  typePath <- fileTypePath root
+  timePath <- fileTimePath root
+  return (path, modePath, typePath, timePath)
 
 saveFile :: FilePath -> LB.ByteString -> IO ()
 saveFile fn fc = do

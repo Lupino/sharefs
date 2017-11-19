@@ -78,27 +78,27 @@ newReadWriteHandle bs = do
   return $ ReadWriteHandle h l
 
 simpleRead :: SimpleHandle -> Int64 -> Int64 -> IO (Either Errno LB.ByteString)
-simpleRead handle byteCount offset = do
+simpleRead handle byteCount offset =
   case handle of
     (WriteHandle _ _)     -> return $ Left eNOSYS
     (ReadWriteHandle h l) -> Right <$> L.with l (seek h)
     (ReadHandle h)        -> Right <$> seek h
 
   where seekContents = LB.take byteCount . LB.drop offset
-        seek h = (atomicModifyIORef' h $ \v -> (v, seekContents v))
+        seek h = atomicModifyIORef' h $ \v -> (v, seekContents v)
 
 simpleWrite :: SimpleHandle -> LB.ByteString -> Int64 -> IO (Either Errno Int64)
-simpleWrite handle dat offset = do
+simpleWrite handle dat offset =
   case handle of
     (ReadHandle _)        -> return $ Left eNOSYS
     (ReadWriteHandle h l) -> Right <$> L.with l (write h)
     (WriteHandle h l)     -> Right <$> L.with l (write h)
 
-  where writeData bs | olen < offset = LB.concat $ [bs, patch, dat]
-                     | otherwise     = LB.concat $ [ LB.take offset bs
-                                                   , dat
-                                                   , LB.drop (offset + len) bs
-                                                   ]
+  where writeData bs | olen < offset = LB.concat [bs, patch, dat]
+                     | otherwise     = LB.concat [ LB.take offset bs
+                                                 , dat
+                                                 , LB.drop (offset + len) bs
+                                                 ]
 
           where olen = LB.length bs
                 len = LB.length dat

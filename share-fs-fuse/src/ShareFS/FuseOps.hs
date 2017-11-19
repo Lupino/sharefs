@@ -18,7 +18,7 @@ import           System.Posix.Types         (ByteCount, DeviceID, EpochTime,
                                              FileMode, FileOffset)
 
 import           Data.Int                   (Int64)
-import           Data.Maybe                 (catMaybes)
+import           Data.Maybe                 (mapMaybe)
 import           System.FilePath            ((<.>))
 import           System.Fuse
 
@@ -120,9 +120,9 @@ chown st ctx = st { statFileOwner = fuseCtxUserID ctx
 simpleStatToFileStat :: SimpleStat -> Maybe FileStat
 simpleStatToFileStat SimpleStat {..} =
   case simpleType of
-    'D' -> Just $ go $ dirStat
+    'D' -> Just $ go dirStat
     'F' -> Just $ go $ fileStat simpleSize
-    'L' -> Just $ go $ linkStat
+    'L' -> Just $ go linkStat
     _   -> Nothing
 
   where go st = (changeMode simpleMode st)
@@ -149,13 +149,13 @@ simpleReadDirectory fs path = do
   ret <- getDir fs path
   case ret of
     Left _ -> return $ Right (defaultDirs ctx)
-    Right stats -> return $ Right (defaultDirs ctx ++ catMaybes (map (go ctx) stats))
+    Right stats -> return $ Right (defaultDirs ctx ++ mapMaybe (go ctx) stats)
 
   where defaultDirs ctx = [ (".",  chown dirStat ctx)
                           , ("..", chown dirStat ctx)
                           ]
 
-        go ctx stat@(SimpleStat { simpleName = n }) =
+        go ctx stat@SimpleStat{simpleName = n} =
           case simpleStatToFileStat stat of
             Nothing -> Nothing
             Just st -> Just (n, chown st ctx)
@@ -260,7 +260,7 @@ simpleCreateLink fs src dst = do
 
 simpleGetFileSystemStats :: String -> IO (Either Errno FileSystemStats)
 simpleGetFileSystemStats _ =
-  return $ Right $ FileSystemStats
+  return $ Right FileSystemStats
     { fsStatBlockSize = 512
     , fsStatBlockCount = 1
     , fsStatBlocksFree = 1
