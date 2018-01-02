@@ -25,11 +25,11 @@ library
                      , http-client
                      , text
                      , wreq
-                     , yuntan-common
                      , lens
                      , unix-time
                      , filepath
                      , share-fs-common
+                     , yuntan-common-signature
 
   default-language:    Haskell2010
 
