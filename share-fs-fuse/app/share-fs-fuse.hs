@@ -49,10 +49,10 @@ main = execParser opts >>= program
 
 program :: Options -> IO ()
 program Options { getConfigFile = configFile } = do
-  c <- Y.decodeFile configFile :: IO (Maybe Config)
+  c <- Y.decodeFileEither configFile
   case c of
-    Nothing     -> putStrLn "Config file format error"
-    Just config -> startFS config
+    Left e       -> putStrLn $ "Config file format error" ++ show e
+    Right config -> startFS config
 
 startFS :: Config -> IO ()
 startFS Config { fileCache = fc, fuseOpt = opt } = do
