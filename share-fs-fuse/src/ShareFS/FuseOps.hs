@@ -53,6 +53,7 @@ fuseOps fs = defaultFuseOps
   , fuseAccess             = \ _ _ -> pure eOK
   }
 
+defStat :: FileStat
 defStat = FileStat
   { statEntryType = Directory
   , statFileMode = 0
@@ -67,6 +68,7 @@ defStat = FileStat
   , statStatusChangeTime = 0
   }
 
+dirStat :: FileStat
 dirStat = defStat
   { statFileMode = foldr1 unionFileModes
                      [ ownerReadMode
@@ -80,6 +82,7 @@ dirStat = defStat
   , statLinkCount = 2
   }
 
+fileStat :: Integral a => a -> FileStat
 fileStat len = defStat
   { statEntryType = RegularFile
   , statFileMode = foldr1 unionFileModes
@@ -92,6 +95,7 @@ fileStat len = defStat
   , statFileSize = fromIntegral len
   }
 
+linkStat :: FileStat
 linkStat = defStat
   { statEntryType = SymbolicLink
   , statFileMode = foldr1 unionFileModes
@@ -113,6 +117,7 @@ changeMode :: Int64 -> FileStat -> FileStat
 changeMode mode st | mode > 0 = st { statFileMode = fromIntegral mode }
                    | otherwise = st
 
+chown :: FileStat -> FuseContext -> FileStat
 chown st ctx = st { statFileOwner = fuseCtxUserID ctx
                   , statFileGroup = fuseCtxGroupID ctx
                   }
@@ -141,6 +146,7 @@ simpleGetFileStat fs path = do
                     Nothing -> return $ Left eNOENT
                     Just st -> return . Right $ chown st ctx
 
+simpleOpenDirectory :: Monad m => p1 -> p2 -> m Errno
 simpleOpenDirectory _ _ = return eOK
 
 simpleReadDirectory :: FS -> FilePath -> IO (Either Errno [(FilePath, FileStat)])
